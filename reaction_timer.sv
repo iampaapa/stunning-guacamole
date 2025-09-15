@@ -74,8 +74,6 @@ module reaction_timer (
 
     always_comb begin
         state_nxt           = state_reg;
-        sec_counter_nxt     = sec_counter_reg;
-        ms_counter_nxt      = ms_counter_reg;
         reaction_time_nxt   = reaction_time_reg;
         rand_delay_nxt      = rand_delay_reg;
         sec_delay_nxt       = sec_delay_reg;
@@ -83,6 +81,8 @@ module reaction_timer (
 
         case (state_reg)
             S_IDLE: begin
+                sec_counter_nxt = '0;
+                ms_counter_nxt  = '0;
                 if (start_tick) begin
                     rand_delay_nxt = (rand_lfsr_reg % 14) + 2;
                     sec_delay_nxt = '0;
@@ -91,11 +91,12 @@ module reaction_timer (
             end
             S_WAIT_RANDOM: begin
                 sec_counter_nxt = sec_tick ? '0' : sec_counter_reg + 1;
+                ms_counter_nxt  = ms_counter_reg;
                 if (sec_tick) begin
                     sec_delay_nxt = sec_delay_reg + 1;
                     if (sec_delay_nxt == rand_delay_reg) begin
                         ms_counter_nxt = '0;
-                        reaction_time_nxt = '0;
+                        reaction_time_nxt = '0';
                         state_nxt = S_PLAY;
                     end
                 end
@@ -104,8 +105,9 @@ module reaction_timer (
                 end
             end
             S_PLAY: begin
-                stimulus_led = 1'b1;
-                ms_counter_nxt = ms_tick ? '0' : ms_counter_reg + 1;
+                stimulus_led    = 1'b1;
+                sec_counter_nxt = sec_counter_reg;
+                ms_counter_nxt  = ms_tick ? '0' : ms_counter_reg + 1;
                 if (ms_tick) begin
                     reaction_time_nxt = reaction_time_reg + 1;
                     if (reaction_time_nxt == 1000) begin
@@ -117,10 +119,17 @@ module reaction_timer (
                 end
             end
             S_SHOW_RESULT, S_TIMEOUT, S_FALSE_START: begin
-                // Hold state until reset
+                sec_counter_nxt = sec_counter_reg;
+                ms_counter_nxt  = ms_counter_reg;
             end
             default: begin
-                state_nxt = S_IDLE;
+                sec_counter_nxt   = '0;
+                ms_counter_nxt    = '0;
+                reaction_time_nxt = '0;
+                rand_delay_nxt    = '0;
+                sec_delay_nxt     = '0;
+                stimulus_led      = 1'b0;
+                state_nxt         = S_IDLE;
             end
         endcase
     end
